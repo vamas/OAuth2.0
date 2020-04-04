@@ -5,6 +5,18 @@ from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Restaurant, MenuItem
 
+#NEW Imports
+from flask import session as login_session
+import random, string
+
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.client import FlowExchangeError
+import httplib2
+import json
+from flask import make_response
+import requests
+
+from googlesignin import GoogleSignin, GoogleSigninError
 
 #Connect to Database and create database session
 engine = create_engine('sqlite:///restaurantmenu.db')
@@ -13,6 +25,79 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
+CLIENT_ID = json.loads(
+    open('client_secrets.json', 'r').read())['web']['client_id']
+APPLICATION_NAME = "Restaurant Menu Application"
+
+CLIENT_SECRETS = json.loads(open('client_secrets.json', 'r').read())
+
+
+@app.route('/login')
+def showLogin():
+	state = ''.join(random.choice(string.ascii_uppercase + string.digits)
+					for x in range(32))
+	login_session['state'] = state
+	return render_template('login.html', STATE=state)
+	
+@app.route('/gconnect', methods=['POST'])
+def gconnect():
+    try:
+        googleSignin = GoogleSignin(auth_code=request.data, 
+            state=login_session['state'],
+            client_id=CLIENT_ID,
+            client_secrets_filename='client_secrets.json',
+            redirect_uri='postmessage',
+            tokeninfo_url='https://www.googleapis.com/oauth2/v1/tokeninfo',
+            userinfo_url='https://www.googleapis.com/oauth2/v1/userinfo',
+            disconnect_url='')
+        openUserSession(googleSignin.signin(request.args.get('state')))        
+        return ''
+    except GoogleSigninError as error:
+        response = make_response(json.dumps(error.__dict__), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+@app.route('/gdisconnect')
+def gdisconnect():
+    if not isSigned():
+        response = make_response(json.dumps('User is not signed in.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    try:
+        googleSignin = GoogleSignin('','','','','','','','https://accounts.google.com/o/oauth2/revoke')
+        googleSignin.signout(login_session['access_token'])
+    except GoogleSigninError as error:
+        response = make_response(json.dumps(error.__dict__), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    closeSigninSession()
+    response = make_response(json.dumps('Successfully disconnected.'), 200)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+
+def isSigned():
+    if login_session is None:
+        return False
+    if login_session.get('access_token', '') == '':
+        print("Access token doesn't exist")
+        return False
+    return True
+
+def openUserSession(signinStatus):
+    login_session['access_token'] = signinStatus.access_token
+    login_session['gplus_id'] = signinStatus.gplus_id
+    login_session['username'] = signinStatus.username
+    login_session['picture'] = signinStatus.picture
+    login_session['email'] = signinStatus.email
+
+def closeSigninSession():
+    del login_session['access_token']
+    del login_session['gplus_id']
+    del login_session['username']
+    del login_session['email']
+    del login_session['picture']
+
 
 #JSON APIs to view Restaurant Information
 @app.route('/restaurant/<int:restaurant_id>/menu/JSON')
@@ -20,7 +105,6 @@ def restaurantMenuJSON(restaurant_id):
     restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
     items = session.query(MenuItem).filter_by(restaurant_id = restaurant_id).all()
     return jsonify(MenuItems=[i.serialize for i in items])
-
 
 @app.route('/restaurant/<int:restaurant_id>/menu/<int:menu_id>/JSON')
 def menuItemJSON(restaurant_id, menu_id):
