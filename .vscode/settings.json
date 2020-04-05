@@ -1,3 +1,3 @@
 {
-    "python.pythonPath": "oauth\\Scripts\\python.exe"
+    "python.pythonPath": "env/bin/python"
 }

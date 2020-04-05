@@ -2709,3 +2709,6 @@ __pycache__/database_setup.cpython-36.pyc
 .vscode/settings.json
 restaurantmenu.db
 restaurantmenuwithusers.db
+__pycache__/googlesignin.cpython-36.pyc
+__pycache__/localusermanager.cpython-36.pyc
+.vscode/settings.json

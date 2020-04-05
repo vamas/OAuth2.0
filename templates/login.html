@@ -28,12 +28,27 @@
     <button id="signinButton">Sign in with Google</button>
     <script>
       $('#signinButton').click(function() {
-        console.log('Clicked signin button');
         auth2.grantOfflineAccess().then(signInCallback);
       });
     </script>        
 
-    <div id="result"></div>
+    <button id="signoutButton">Signout</button>
+    <script>
+      $('#signoutButton').click(function() {
+        $.ajax({
+          type: 'GET',
+          url: '/gdisconnect',
+          success: function(result) {              
+              if (result) {
+                $('#result').html('User signed out!</br>'+ result + '</br>Redirecting...')
+                setTimeout(function() {
+                  window.location.href = "/restaurant";
+                }, 4000);
+              } 
+            }      
+          }); 
+        });
+    </script>   
 
     <script>
     function signInCallback(authResult) {
@@ -63,6 +78,8 @@
           }      
       }); 
     }   
+
+    
     </script>
 
   </body>
