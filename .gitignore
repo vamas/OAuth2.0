@@ -2708,3 +2708,4 @@ env/share/python-wheels/wheel-0.30.0-py2.py3-none-any.whl
 __pycache__/database_setup.cpython-36.pyc
 .vscode/settings.json
 restaurantmenu.db
+restaurantmenuwithusers.db

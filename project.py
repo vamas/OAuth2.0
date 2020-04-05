@@ -3,6 +3,7 @@ app = Flask(__name__)
 
 from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
+
 from database_setup import Base, Restaurant, MenuItem
 
 #NEW Imports
@@ -17,6 +18,8 @@ from flask import make_response
 import requests
 
 from googlesignin import GoogleSignin, GoogleSigninError
+from database_setup import Base, Restaurant, MenuItem, User
+from localusermanager import LocalUserManager
 
 #Connect to Database and create database session
 engine = create_engine('sqlite:///restaurantmenu.db')
