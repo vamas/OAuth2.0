@@ -35,7 +35,10 @@ APPLICATION_NAME = "Restaurant Menu Application"
 
 CLIENT_SECRETS = json.loads(open('client_secrets.json', 'r').read())
 
-
+GOOGLEAUTH = "google"
+MSAUTH = "microsoft"
+AUTHPROVIDERSTOREINDEX = "authProvider"
+USERSTOREINDEX = "authUser"
 
 @app.route('/login')
 def showLogin():
@@ -46,6 +49,7 @@ def showLogin():
 	
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
+    print('Google auth in invoked')
     try:
         googleSignin = GoogleSignin(auth_code=request.data, 
             state=login_session['state'],
@@ -55,10 +59,11 @@ def gconnect():
             tokeninfo_url='https://www.googleapis.com/oauth2/v1/tokeninfo',
             userinfo_url='https://www.googleapis.com/oauth2/v1/userinfo',
             disconnect_url='')
-        openUserSession(googleSignin.signin(request.args.get('state')))   
-        LocalUserManager(session).createUserOrReturnExistingUser(login_session['username'],
-            login_session['email'],
-            login_session['picture'])
+        openUserSession(googleSignin.signin(request.args.get('state')), GOOGLEAUTH)   
+        LocalUserManager(session).createUserOrReturnExistingUser(
+            signedUser()['username'],
+            signedUser()['email'],
+            signedUser()['email'])
         return ''
     except GoogleSigninError as error:
         response = make_response(json.dumps(error.__dict__), 401)
@@ -73,7 +78,7 @@ def gdisconnect():
         return response
     try:
         googleSignin = GoogleSignin('','','','','','','','https://accounts.google.com/o/oauth2/revoke')
-        googleSignin.signout(login_session['access_token'])
+        googleSignin.signout(signedUser()['access_token'])
     except GoogleSigninError as error:
         response = make_response(json.dumps(error.__dict__), 401)
         response.headers['Content-Type'] = 'application/json'
@@ -82,29 +87,6 @@ def gdisconnect():
     response = make_response(json.dumps('Successfully disconnected.'), 200)
     response.headers['Content-Type'] = 'application/json'
     return response
-
-def isSigned():
-    if login_session is None:
-        return False
-    if login_session.get('access_token', '') == '':
-        print("Access token doesn't exist")
-        return False
-    return True
-
-def openUserSession(signinStatus):
-    login_session['access_token'] = signinStatus.access_token
-    login_session['gplus_id'] = signinStatus.gplus_id
-    login_session['username'] = signinStatus.username
-    login_session['picture'] = signinStatus.picture
-    login_session['email'] = signinStatus.email
-
-def closeSigninSession():
-    del login_session['access_token']
-    del login_session['gplus_id']
-    del login_session['username']
-    del login_session['email']
-    del login_session['picture']
-
 
 #JSON APIs to view Restaurant Information
 @app.route('/restaurant/<int:restaurant_id>/menu/JSON')
@@ -251,6 +233,38 @@ def deleteMenuItem(restaurant_id,menu_id):
         return redirect(url_for('showMenu', restaurant_id = restaurant_id))
     else:
         return render_template('deleteMenuItem.html', item = itemToDelete)
+
+
+def isSigned():
+    #return True
+    if signedUser() != None:
+        print('User is signed in')
+        return True
+    return False
+
+def signedUser():
+    if login_session.get(USERSTOREINDEX, '') != '':
+        return json.loads(login_session.get(USERSTOREINDEX, ''))
+    return None
+
+def authProvider():
+    if json.loads(login_session.get(AUTHPROVIDERSTOREINDEX, '')) != '':
+        return json.loads(login_session.get(AUTHPROVIDERSTOREINDEX, ''))
+    return None
+
+def openUserSession(appUser, provider):
+    setAuthUser(appUser)
+    setAuthProvider(provider)
+
+def closeSigninSession():
+    del login_session[USERSTOREINDEX]
+
+def setAuthUser(appUser):
+    login_session[USERSTOREINDEX] = json.dumps(appUser)
+
+def setAuthProvider(provider):
+    login_session[AUTHPROVIDERSTOREINDEX] = provider  
+
 
 if __name__ == '__main__':
   app.secret_key = 'super_secret_key'

@@ -31,11 +31,13 @@ class GoogleSignin(object):
         self.validateTokenUser(token)
         self.validateTokenApp(token)
         userInfo = self.getUserInfo()
-        return GoogleSigninStatus(self.credentials.access_token,
-                    self.gplus_id,
-                    userInfo['name'],
-                    userInfo['picture'],
-                    userInfo['email'])
+        return { 
+                 "access_token": self.credentials.access_token,
+                 "source_id": self.gplus_id,
+                 "username": userInfo['name'],
+                 "picture": userInfo['picture'],
+                 "email": userInfo['email']
+                }
 
     def signout(self, access_token):
         url = (self.disconnect_url + '?token=%s') % access_token
@@ -80,19 +82,6 @@ class GoogleSignin(object):
         params = {'access_token': self.credentials.access_token, 'alt': 'json'}
         answer = requests.get(self.userinfo_url, params=params)
         return answer.json()
-
-
-class GoogleSigninStatus(object):
-
-    def __init__(self, access_token, gplus_id, username, picture, email):
-        self.access_token = access_token
-        self.gplus_id = gplus_id
-        self.username = username
-        self.picture = picture
-        self.email = email
-
-
-
 
 class GoogleSigninError(Exception):
     pass
